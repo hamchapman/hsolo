@@ -1,0 +1,11 @@
+@font-face {
+  font-family: 'againtsregular';
+  src: url('/fonts/againts-webfont.eot');
+  src: url('/fonts/againts-webfont.eot?#iefix') format('embedded-opentype'),
+       url('/fonts/againts-webfont.woff2') format('woff2'),
+       url('/fonts/againts-webfont.woff') format('woff'),
+       url('/fonts/againts-webfont.ttf') format('truetype'),
+       url('/fonts/againts-webfont.svg#againtsregular') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}

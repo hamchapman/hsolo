@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HandSolo</title>
+
+  <link rel="shortcut icon" href="assets/images/gt_favicon.png">
+  <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/magister.css">
+  <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+  <link href='//fonts.googleapis.com/css?family=Wire+One' rel='stylesheet' type='text/css'>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,600' rel='stylesheet' type='text/css'>
+  <link href="/css/stylesheet.css" rel='stylesheet' type='text/css'>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+  <script src="//js.pusher.com/2.2/pusher.min.js"></script>
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+  <script src="/js/modernizr.custom.72241.js"></script>
+  <script src="/js/magister.js"></script>
+  <script src='http://static.opentok.com/v2/js/opentok.min.js'></script>
+
+  <script>
+    $(document).ready(function() {
+      var playerId = "<%= @player_id %>";
+      var pusher = new Pusher('8e13eb33b3d6df4ba979');
+      var playerChannel = pusher.subscribe('presence-' + playerId);
+      var generalChannel = pusher.subscribe('private-updates');
+      var timePerTurn = <%= @time_per_turn %>;
+      var playerQueue = [];
+      var timeToWait = 0;
+      var currentTurnRemaining = 0;
+      var turnStarted = false;
+
+      generalChannel.bind('client-turn-tick', function(data) {
+        // console.log("RECEIVED client-turn-tick: " + data["time_remaining"]);
+        currentTurnRemaining = data["time_remaining"];
+        updateTimeRemaining()
+      });
+
+      $(".hvr-shutter-in-vertical").click(function(){
+        $(this).hide()
+        $("#countdown-timer").css("height","initial")
+        $("#countdown-timer").animate({
+          opacity: 1
+        },{duration: 1000})
+
+        $.ajax({
+          method: 'POST',
+          url: '/play',
+          data: { player_id: playerId },
+          dataType: 'JSON',
+          success: function(data) {
+            playerQueue = data["players_ahead"];
+            // console.log("I've got these fellas in the queue with me: " + playerQueue);
+            timeToWait = (playerQueue.length - 1) * timePerTurn;
+            setCounterValueTo(timeToWait);
+            if (playerQueue[0] == playerId) {
+              startTurn();
+            }
+          }
+        });
+
+        // generalChannel.bind('client-turn-started', function(data) {
+        //   // console.log("STARTING TURN playersAhead: " + playerQueue);
+        //   // console.log("STARTING TURN playersAhead: " + playersAhead);
+        // });
+
+        generalChannel.bind('client-turn-ended', function(data) {
+          // console.log("RECEIVED client-turn-ended: " + data["player_id"]);
+          removePlayerIdFromQueueIfPresent(data["player_id"], [checkIfNextInQueue, updateTimeRemaining])
+        });
+
+        generalChannel.bind('we-have-a-quitter', function(data) {
+          // console.log("RECEIVED we-have-a-quitter: " + data["player_id"]);
+          removePlayerIdFromQueueIfPresent(data["player_id"], [checkIfNextInQueue, updateTimeRemaining])
+        });
+      })
+
+      function checkIfNextInQueue() {
+        if (playerQueue[0] == playerId) {
+          startTurn();
+        }
+      }
+
+
+      function updateTimeRemaining() {
+        if (!turnStarted) {
+          // console.log("UPDATING currentTurnRemaining - timePerTurn: " + (currentTurnRemaining - timePerTurn).toString());
+          timeToWait = (playerQueue.length - 1) * timePerTurn + (currentTurnRemaining - timePerTurn);
+          // console.log("UPDATING timeToWait: " + timeToWait.toString());
+          setCounterValueTo(timeToWait);
+        }
+      }
+
+      function setCounterValueTo(timeRemaining) {
+        var timeRemaining = pad(timeRemaining, 4).toString();
+        [0,1,2,3].forEach(function(i) {
+          $('#timer-image-' + i).css('background-image', 'url("/images/timer-' + timeRemaining[i] + '.png")');
+        })
+      }
+
+      function setTurnCounterValueTo(timeRemaining) {
+        var timeRemaining = pad(timeRemaining, 2).toString();
+        [0,1].forEach(function(i) {
+          $('#turn-timer-image-' + i).css('background-image', 'url("/images/timer-' + timeRemaining[i] + '.png")');
+        })
+      }
+
+      function pad(n, width, z) {
+        z = z || '0';
+        n = n + '';
+        return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+      }
+
+      function startTurn() {
+        turnStarted = true;
+        generalChannel.trigger('client-turn-started', { player_id: playerId });
+        var turnCounter = timePerTurn;
+        setTurnCounterValueTo(turnCounter);
+        var keysPressed = [];
+        $(document).keydown(function(event) {
+          // console.log(event);
+          if ( event.which == 65 ) {
+            if (keysPressed.indexOf("a") < 0) {
+              keysPressed.push("a");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 68 ) {
+            if (keysPressed.indexOf("d") < 0) {
+              keysPressed.push("d");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 71 ) {
+            if (keysPressed.indexOf("g") < 0) {
+              keysPressed.push("g");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 72 ) {
+            if (keysPressed.indexOf("h") < 0) {
+              keysPressed.push("h");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 70 ) {
+            if (keysPressed.indexOf("f") < 0) {
+              keysPressed.push("f");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 82 ) {
+            if (keysPressed.indexOf("r") < 0) {
+              keysPressed.push("r");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 84 ) {
+            if (keysPressed.indexOf("t") < 0) {
+              keysPressed.push("t");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 90 ) {
+            if (keysPressed.indexOf("z") < 0) {
+              keysPressed.push("z");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 88 ) {
+            if (keysPressed.indexOf("x") < 0) {
+              keysPressed.push("x");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 89 ) {
+            if (keysPressed.indexOf("y") < 0) {
+              keysPressed.push("y");
+            }
+            event.preventDefault();
+          }
+          if ( event.which == 76 ) {
+            if (keysPressed.indexOf("l") < 0) {
+              keysPressed.push("l");
+            }
+            event.preventDefault();
+          }
+        });
+        var turnTimer = setInterval(function() {
+          if (turnCounter == 0) {
+            setTurnCounterValueTo(turnCounter);
+            endTurn()
+            clearInterval(turnTimer);
+          } else if (turnCounter > 0) {
+            // console.log("TRIGGERING client-turn-tick");
+            //
+            // TODO UNCOMMENT THIS
+            //
+            // generalChannel.trigger('client-turn-tick', { player_id: playerId, time_remaining: timePerTurn - (timePerTurn - turnCounter) - 1 });
+            setTurnCounterValueTo(turnCounter);
+          } else {
+            console.log("Something terrible has happened");
+          }
+          turnCounter --;
+          var moves = {
+            "base": "0",
+            "elbow": "0",
+            "shoulder": "0",
+            "wrist": "0",
+            "grip": "0",
+            "light": "0"
+          }
+          keysPressed.forEach(function(key) {
+            console.log(key);
+            switch (key) {
+              case "a":
+                moves["base"] = "left"
+                break;
+              case "d":
+                if (moves["base"] == "0") {
+                  moves["base"] = "right"
+                }
+                break;
+              case "r":
+                moves["shoulder"] = "up"
+                break;
+              case "f":
+                if (moves["shoulder"] == "0") {
+                  moves["shoulder"] = "down"
+                }
+                break;
+              case "t":
+                moves["elbow"] = "up"
+                break;
+              case "g":
+                if (moves["elbow"] == "0") {
+                  moves["elbow"] = "down"
+                }
+                break;
+              case "y":
+                moves["wrist"] = "up"
+                break;
+              case "h":
+                if (moves["wrist"] == "0") {
+                  moves["wrist"] = "down"
+                }
+                break;
+              case "z":
+                moves["grip"] = "open"
+                break;
+              case "x":
+                if (moves["grip"] == "0") {
+                  moves["grip"] = "close"
+                }
+                break;
+              case "l":
+                moves["light"] = "on"
+                break;
+            }
+          })
+          generalChannel.trigger('client-move-robot', moves);
+          keysPressed = [];
+        }, 1000);
+      }
+
+      function endTurn() {
+        removePlayerIdFromQueueIfPresent(playerId);
+        generalChannel.trigger('client-turn-ended', { player_id: playerId });
+      }
+
+      function removePlayerIdFromQueueIfPresent(playerId, functionsToCall) {
+        functionsToCall = functionsToCall || []
+        var playerIndex = playerQueue.indexOf(playerId);
+        if (playerIndex > -1) {
+          playerQueue.splice(playerIndex, 1);
+          functionsToCall.forEach(function(f) {
+            f();
+          })
+        }
+      }
+
+      var keyMoveLookup = {
+        "a": ["base", "left"],
+        "d": ["base", "right"],
+        "r": ["shoulder", "up"],
+        "f": ["shoulder", "down"],
+        "t": ["elbow", "up"],
+        "g": ["elbow", "down"],
+        "y": ["wrist", "up"],
+        "h": ["wrist", "down"],
+        "z": ["grip", "open"],
+        "x": ["grip", "close"]
+      }
+
+    })
+  </script>
+
+  <script type="text/javascript">
+    // Initialize API key, session, and token...
+    // Think of a session as a room, and a token as the key to get in to the room
+    // Sessions and tokens are generated on your server and passed down to the client
+    var apiKey = "45217392";
+    var sessionId = "1_MX40NTIxNzM5Mn5-MTQyOTcwNjU5MTg3M35leCtsZjJVamVkeDdldHlVNE1tNTRGUHV-fg";
+    var token = "T1==cGFydG5lcl9pZD00NTIxNzM5MiZzaWc9ODNiNTk0YTZhNGVkNzVjNTM5NWM1NTgwYWFmMDc0NmEzMGMxOTAyZDpyb2xlPXB1Ymxpc2hlciZzZXNzaW9uX2lkPTFfTVg0ME5USXhOek01TW41LU1UUXlPVGN3TmpVNU1UZzNNMzVsZUN0c1pqSlZhbVZrZURkbGRIbFZORTF0TlRSR1VIVi1mZyZjcmVhdGVfdGltZT0xNDI5NzA2NjEwJm5vbmNlPTAuOTgzMjIwODcwMDU4NTEwOA==";
+
+    // Initialize session, set up event listeners, and connect
+    var session = OT.initSession(apiKey, sessionId);
+
+    session.on("streamCreated", function(event) {
+      session.subscribe(event.stream, "subscriberDiv", {width:528, height:396});
+    });
+
+    session.connect(token, function(error) {
+      // var publisher = OT.initPublisher();
+      // session.publish(publisher);
+    });
+  </script>
+
+</head>
+
+<body class="theme-invert">
+  <div class="wrapper">
+    <div id="header"></div>
+    <section class="section" id="head">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-10 col-lg-10 col-xs-10 col-xs-offset-1 col-md-offset-1 col-lg-offset-1 text-center">
+
+            <h2 class="tagline">REALTIME INTERACTIVE DEMO</h2>
+            <h1 class="title">Let's Play Ball</h1>
+
+            <p class="intro">You have <b>15 seconds</b> to get the ball in the hoop using the robotic arm</p>
+
+
+
+            <div style="color:white;">
+            </div>
+
+
+            <div id = "slider">
+              <button class="hvr-shutter-in-vertical">Let Me Play!</button>
+              <div id="countdown-timer">
+                <div id="timer-image-0" class="timer-image"></div>
+                <div id="timer-image-1" class="timer-image"></div>
+                <div id="timer-image-2" class="timer-image"></div>
+                <div id="timer-image-3" class="timer-image"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="turn-timer">
+            <div id="turn-timer-image-0" class="timer-image"></div>
+            <div id="turn-timer-image-1" class="timer-image"></div>
+          </div>
+
+
+          <!-- <h1 style="color:white;"><%= @player_id %></h1> -->
+          <div id="subscriberDiv"></div>
+
+
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <div class="footer-inner">
+      <p class="footer-love"> <img src="/images/pusher_love.png" width="15" style="margin-right:6px;">
+      Realtime Technology by</p>
+        <a href=""><img src="/images/pusher_logo.png" width="95">
+        </a>
+      <p class="copyright-text">© 2015 Pusher Ltd.</p>
+    </div>
+  </div>
+</body>
+</html>
