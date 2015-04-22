@@ -24,29 +24,58 @@ end
 socket.connect(true)
 Pusher.url = "http://8e13eb33b3d6df4ba979:b847765e341447f35440@api.pusherapp.com/apps/116651"
 
+# get '/' do
+#   random_id = rand(36**20).to_s(36)
+#   @player_id = random_id
+#   @time_per_turn = time_per_turn
+
+#   if current_remaining == 0 && redis.llen('player_queue').to_i == 0
+#     @players_ahead = []
+#     @time_to_wait = 0
+#   else
+#     @current_remaining = current_remaining
+#     @players_ahead = redis.lrange('player_queue', 0, -1)
+#     puts('———————————')
+#     number_in_queue = (redis.llen('player_queue').to_i - 1) < 0 ? 0 : (redis.llen('player_queue').to_i - 1)
+#     puts('———————————')
+#     @time_to_wait = current_remaining + time_per_turn * number_in_queue
+#     puts '****************************************************************'
+#     puts @time_to_wait.inspect
+#     # @current_remaining = current_remaining
+#     redis.rpush("player_queue", @player_id)
+#   end
+
+#   # @next_player_id = redis.lindex("player_queue", 0)
+#   erb :index
+# end
+#
+
 get '/' do
   random_id = rand(36**20).to_s(36)
   @player_id = random_id
   @time_per_turn = time_per_turn
+  erb :index
+end
 
-  if current_remaining == 0 && redis.llen('player_queue').to_i == 0
-    @players_ahead = []
-    @time_to_wait = 0
-  else
-    @current_remaining = current_remaining
-    @players_ahead = redis.lrange('player_queue', 0, -1)
-    puts('———————————')
-    number_in_queue = (redis.llen('player_queue').to_i - 1) < 0 ? 0 : (redis.llen('player_queue').to_i - 1)
-    puts('———————————')
-    @time_to_wait = current_remaining + time_per_turn * number_in_queue
-    puts '****************************************************************'
-    puts @time_to_wait.inspect
-    # @current_remaining = current_remaining
-    redis.rpush("player_queue", @player_id)
-  end
+
+post '/play' do
+  content_type :json
+  # redis.llen('player_queue')
+
+
+  # @players_ahead = redis.lrange('player_queue', 0, -1)
+  # redis.rpush("player_queue", params[:player_id])
+  redis.rpush("player_queue", params[:player_id])
+  @player_queue = redis.lrange('player_queue', 0, -1)
+
+  # if redis.llen('player_queue').to_i == 0
+  #   @players_ahead = []
+  # else
+  # end
 
   # @next_player_id = redis.lindex("player_queue", 0)
-  erb :index
+
+  { players_ahead: @player_queue }.to_json
 end
 
 post '/webhooks/pusher' do

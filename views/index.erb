@@ -8,15 +8,17 @@
   <link rel="shortcut icon" href="assets/images/gt_favicon.png">
   <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet" type="text/css">
   <link rel="stylesheet" href="/css/magister.css">
-
   <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
   <link href='//fonts.googleapis.com/css?family=Wire+One' rel='stylesheet' type='text/css'>
-  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:400,200,300,600,700' rel='stylesheet' type='text/css'>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,600' rel='stylesheet' type='text/css'>
   <link href="/css/stylesheet.css" rel='stylesheet' type='text/css'>
-
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
   <script src="//js.pusher.com/2.2/pusher.min.js"></script>
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+  <script src="/js/modernizr.custom.72241.js"></script>
+  <script src="/js/magister.js"></script>
+  <script src='http://static.opentok.com/v2/js/opentok.min.js'></script>
 
   <script>
     $(document).ready(function() {
@@ -24,47 +26,17 @@
       var pusher = new Pusher('8e13eb33b3d6df4ba979');
       var playerChannel = pusher.subscribe('presence-' + playerId);
       var generalChannel = pusher.subscribe('private-updates');
-
-      var counter = parseInt("<%= @time_to_wait %>");
-      // console.log(counter);
-      var playersAhead = <%= @players_ahead.to_json %>;
       var timePerTurn = <%= @time_per_turn %>;
-
-      var currentRemaining = <%= @current_remaining %>;
-      var turnTimeRemaining = 0;
-
-      generalChannel.bind('client-turn-started', function(data) {
-        console.log(data);
-      });
-
-      generalChannel.bind('client-turn-ended', function(data) {
-        var playerIndex = playersAhead.indexOf(data["player_id"]);
-        if (playerIndex > -1) {
-          playersAhead.splice(playerIndex, 1);
-          counter -= timePerTurn;
-        }
-        updateExptCounter()
-      });
-
+      var playerQueue = [];
+      var timeToWait = 0;
+      var currentTurnRemaining = 0;
+      var turnStarted = false;
 
       generalChannel.bind('client-turn-tick', function(data) {
-        // console.log(data);
-        currentRemaining = data["time_remaining"];
-        updateExptCounter()
+        // console.log("RECEIVED client-turn-tick: " + data["time_remaining"]);
+        currentTurnRemaining = data["time_remaining"];
+        updateTimeRemaining()
       });
-
-      generalChannel.bind('we-have-a-quitter', function(data) {
-        var playerIndex = playersAhead.indexOf(data["player_id"]);
-        if (playerIndex > -1) {
-          playersAhead.splice(playerIndex, 1);
-          counter -= timePerTurn;
-        }
-        updateExptCounter()
-      });
-
-
-      console.log(playersAhead);
-      setCounterValueTo(counter);
 
       $(".hvr-shutter-in-vertical").click(function(){
         $(this).hide()
@@ -72,14 +44,54 @@
         $("#countdown-timer").animate({
           opacity: 1
         },{duration: 1000})
-        beginCountdown()
+
+        $.ajax({
+          method: 'POST',
+          url: '/play',
+          data: { player_id: playerId },
+          dataType: 'JSON',
+          success: function(data) {
+            playerQueue = data["players_ahead"];
+            // console.log("I've got these fellas in the queue with me: " + playerQueue);
+            timeToWait = (playerQueue.length - 1) * timePerTurn;
+            setCounterValueTo(timeToWait);
+            if (playerQueue[0] == playerId) {
+              startTurn();
+            }
+          }
+        });
+
+        // generalChannel.bind('client-turn-started', function(data) {
+        //   // console.log("STARTING TURN playersAhead: " + playerQueue);
+        //   // console.log("STARTING TURN playersAhead: " + playersAhead);
+        // });
+
+        generalChannel.bind('client-turn-ended', function(data) {
+          // console.log("RECEIVED client-turn-ended: " + data["player_id"]);
+          removePlayerIdFromQueueIfPresent(data["player_id"], [checkIfNextInQueue, updateTimeRemaining])
+        });
+
+        generalChannel.bind('we-have-a-quitter', function(data) {
+          // console.log("RECEIVED we-have-a-quitter: " + data["player_id"]);
+          removePlayerIdFromQueueIfPresent(data["player_id"], [checkIfNextInQueue, updateTimeRemaining])
+        });
       })
 
+      function checkIfNextInQueue() {
+        if (playerQueue[0] == playerId) {
+          startTurn();
+        }
+      }
 
-      window.setTimeout(function() {
-        $(".hvr-shutter-in-vertical").trigger('click');
-      }, 3000);
 
+      function updateTimeRemaining() {
+        if (!turnStarted) {
+          // console.log("UPDATING currentTurnRemaining - timePerTurn: " + (currentTurnRemaining - timePerTurn).toString());
+          timeToWait = (playerQueue.length - 1) * timePerTurn + (currentTurnRemaining - timePerTurn);
+          // console.log("UPDATING timeToWait: " + timeToWait.toString());
+          setCounterValueTo(timeToWait);
+        }
+      }
 
       function setCounterValueTo(timeRemaining) {
         var timeRemaining = pad(timeRemaining, 4).toString();
@@ -95,22 +107,6 @@
         })
       }
 
-      function beginCountdown() {
-        var countdownTimer = setInterval(function() {
-          // console.log(counter);
-          if (counter == 0) {
-            startTurn()
-            setCounterValueTo(counter)
-            clearInterval(countdownTimer);
-          } else if (counter > 0) {
-            setCounterValueTo(counter)
-          } else {
-            console.log("Something terrible has happened");
-          }
-          counter --;
-        }, 1000);
-      }
-
       function pad(n, width, z) {
         z = z || '0';
         n = n + '';
@@ -118,16 +114,18 @@
       }
 
       function startTurn() {
+        turnStarted = true;
         generalChannel.trigger('client-turn-started', { player_id: playerId });
         var turnCounter = timePerTurn;
         setTurnCounterValueTo(turnCounter);
         var turnTimer = setInterval(function() {
           if (turnCounter == 0) {
             setTurnCounterValueTo(turnCounter);
-            clearInterval(turnTimer);
             endTurn()
+            clearInterval(turnTimer);
           } else if (turnCounter > 0) {
-            generalChannel.trigger('client-turn-tick', { player_id: playerId, time_remaining: timePerTurn - (timePerTurn - turnCounter) });
+            // console.log("TRIGGERING client-turn-tick");
+            generalChannel.trigger('client-turn-tick', { player_id: playerId, time_remaining: timePerTurn - (timePerTurn - turnCounter) - 1 });
             setTurnCounterValueTo(turnCounter);
           } else {
             console.log("Something terrible has happened");
@@ -137,11 +135,42 @@
       }
 
       function endTurn() {
+        removePlayerIdFromQueueIfPresent(playerId);
         generalChannel.trigger('client-turn-ended', { player_id: playerId });
-        updateExptCounter()
-        alert("Turn over pal");
+      }
+
+      function removePlayerIdFromQueueIfPresent(playerId, functionsToCall) {
+        functionsToCall = functionsToCall || []
+        var playerIndex = playerQueue.indexOf(playerId);
+        if (playerIndex > -1) {
+          playerQueue.splice(playerIndex, 1);
+          functionsToCall.forEach(function(f) {
+            f();
+          })
+        }
       }
     })
+  </script>
+
+  <script type="text/javascript">
+    // Initialize API key, session, and token...
+    // Think of a session as a room, and a token as the key to get in to the room
+    // Sessions and tokens are generated on your server and passed down to the client
+    var apiKey = "45217392";
+    var sessionId = "1_MX40NTIxNzM5Mn5-MTQyOTcwNjU5MTg3M35leCtsZjJVamVkeDdldHlVNE1tNTRGUHV-fg";
+    var token = "T1==cGFydG5lcl9pZD00NTIxNzM5MiZzaWc9ODNiNTk0YTZhNGVkNzVjNTM5NWM1NTgwYWFmMDc0NmEzMGMxOTAyZDpyb2xlPXB1Ymxpc2hlciZzZXNzaW9uX2lkPTFfTVg0ME5USXhOek01TW41LU1UUXlPVGN3TmpVNU1UZzNNMzVsZUN0c1pqSlZhbVZrZURkbGRIbFZORTF0TlRSR1VIVi1mZyZjcmVhdGVfdGltZT0xNDI5NzA2NjEwJm5vbmNlPTAuOTgzMjIwODcwMDU4NTEwOA==";
+
+    // Initialize session, set up event listeners, and connect
+    var session = OT.initSession(apiKey, sessionId);
+
+    session.on("streamCreated", function(event) {
+      session.subscribe(event.stream, "subscriberDiv", {width:528, height:396});
+    });
+
+    session.connect(token, function(error) {
+      // var publisher = OT.initPublisher();
+      // session.publish(publisher);
+    });
   </script>
 
 </head>
@@ -181,6 +210,11 @@
             <div id="turn-timer-image-1" class="timer-image"></div>
           </div>
 
+
+          <!-- <h1 style="color:white;"><%= @player_id %></h1> -->
+          <div id="subscriberDiv"></div>
+
+
         </div>
       </div>
     </section>
@@ -195,9 +229,5 @@
       <p class="copyright-text">© 2015 Pusher Ltd.</p>
     </div>
   </div>
-
-  <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
-  <script src="/js/modernizr.custom.72241.js"></script>
-  <script src="/js/magister.js"></script>
 </body>
 </html>
