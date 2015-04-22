@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HandSolo</title>
+
+  <link rel="shortcut icon" href="assets/images/gt_favicon.png">
+  <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="/css/magister.css">
+
+  <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+  <link href='//fonts.googleapis.com/css?family=Wire+One' rel='stylesheet' type='text/css'>
+  <link href='//fonts.googleapis.com/css?family=Source+Sans+Pro:400,200,300,600,700' rel='stylesheet' type='text/css'>
+  <link href="/css/stylesheet.css" rel='stylesheet' type='text/css'>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+  <script src="//js.pusher.com/2.2/pusher.min.js"></script>
+
+  <script>
+    $(document).ready(function() {
+      var playerId = "<%= @player_id %>";
+      var pusher = new Pusher('8e13eb33b3d6df4ba979');
+      var playerChannel = pusher.subscribe('presence-' + playerId);
+      var generalChannel = pusher.subscribe('private-updates');
+
+      var counter = parseInt("<%= @time_to_wait %>");
+      // console.log(counter);
+      var playersAhead = <%= @players_ahead.to_json %>;
+      var timePerTurn = <%= @time_per_turn %>;
+
+      var currentRemaining = <%= @current_remaining %>;
+      var turnTimeRemaining = 0;
+
+      generalChannel.bind('client-turn-started', function(data) {
+        console.log(data);
+      });
+
+      generalChannel.bind('client-turn-ended', function(data) {
+        var playerIndex = playersAhead.indexOf(data["player_id"]);
+        if (playerIndex > -1) {
+          playersAhead.splice(playerIndex, 1);
+          counter -= timePerTurn;
+        }
+        updateExptCounter()
+      });
+
+
+      generalChannel.bind('client-turn-tick', function(data) {
+        // console.log(data);
+        currentRemaining = data["time_remaining"];
+        updateExptCounter()
+      });
+
+      generalChannel.bind('we-have-a-quitter', function(data) {
+        var playerIndex = playersAhead.indexOf(data["player_id"]);
+        if (playerIndex > -1) {
+          playersAhead.splice(playerIndex, 1);
+          counter -= timePerTurn;
+        }
+        updateExptCounter()
+      });
+
+
+      console.log(playersAhead);
+      setCounterValueTo(counter);
+
+      $(".hvr-shutter-in-vertical").click(function(){
+        $(this).hide()
+        $("#countdown-timer").css("height","initial")
+        $("#countdown-timer").animate({
+          opacity: 1
+        },{duration: 1000})
+        beginCountdown()
+      })
+
+
+      window.setTimeout(function() {
+        $(".hvr-shutter-in-vertical").trigger('click');
+      }, 3000);
+
+
+      function setCounterValueTo(timeRemaining) {
+        var timeRemaining = pad(timeRemaining, 4).toString();
+        [0,1,2,3].forEach(function(i) {
+          $('#timer-image-' + i).css('background-image', 'url("/images/timer-' + timeRemaining[i] + '.png")');
+        })
+      }
+
+      function setTurnCounterValueTo(timeRemaining) {
+        var timeRemaining = pad(timeRemaining, 2).toString();
+        [0,1].forEach(function(i) {
+          $('#turn-timer-image-' + i).css('background-image', 'url("/images/timer-' + timeRemaining[i] + '.png")');
+        })
+      }
+
+      function beginCountdown() {
+        var countdownTimer = setInterval(function() {
+          // console.log(counter);
+          if (counter == 0) {
+            startTurn()
+            setCounterValueTo(counter)
+            clearInterval(countdownTimer);
+          } else if (counter > 0) {
+            setCounterValueTo(counter)
+          } else {
+            console.log("Something terrible has happened");
+          }
+          counter --;
+        }, 1000);
+      }
+
+      function pad(n, width, z) {
+        z = z || '0';
+        n = n + '';
+        return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+      }
+
+      function startTurn() {
+        generalChannel.trigger('client-turn-started', { player_id: playerId });
+        var turnCounter = timePerTurn;
+        setTurnCounterValueTo(turnCounter);
+        var turnTimer = setInterval(function() {
+          if (turnCounter == 0) {
+            setTurnCounterValueTo(turnCounter);
+            clearInterval(turnTimer);
+            endTurn()
+          } else if (turnCounter > 0) {
+            generalChannel.trigger('client-turn-tick', { player_id: playerId, time_remaining: timePerTurn - (timePerTurn - turnCounter) });
+            setTurnCounterValueTo(turnCounter);
+          } else {
+            console.log("Something terrible has happened");
+          }
+          turnCounter --;
+        }, 1000);
+      }
+
+      function endTurn() {
+        generalChannel.trigger('client-turn-ended', { player_id: playerId });
+        updateExptCounter()
+        alert("Turn over pal");
+      }
+    })
+  </script>
+
+</head>
+
+<body class="theme-invert">
+  <div class="wrapper">
+    <div id="header"></div>
+    <section class="section" id="head">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-10 col-lg-10 col-xs-10 col-xs-offset-1 col-md-offset-1 col-lg-offset-1 text-center">
+
+            <h2 class="tagline">REALTIME INTERACTIVE DEMO</h2>
+            <h1 class="title">Let's Play Ball</h1>
+
+            <p class="intro">You have <b>15 seconds</b> to get the ball in the hoop using the robotic arm</p>
+
+
+
+            <div style="color:white;">
+            </div>
+
+
+            <div id = "slider">
+              <button class="hvr-shutter-in-vertical">Let Me Play!</button>
+              <div id="countdown-timer">
+                <div id="timer-image-0" class="timer-image"></div>
+                <div id="timer-image-1" class="timer-image"></div>
+                <div id="timer-image-2" class="timer-image"></div>
+                <div id="timer-image-3" class="timer-image"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="turn-timer">
+            <div id="turn-timer-image-0" class="timer-image"></div>
+            <div id="turn-timer-image-1" class="timer-image"></div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <div class="footer-inner">
+      <p class="footer-love"> <img src="/images/pusher_love.png" width="15" style="margin-right:6px;">
+      Realtime Technology by</p>
+        <a href=""><img src="/images/pusher_logo.png" width="95">
+        </a>
+      <p class="copyright-text">© 2015 Pusher Ltd.</p>
+    </div>
+  </div>
+
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+  <script src="/js/modernizr.custom.72241.js"></script>
+  <script src="/js/magister.js"></script>
+</body>
+</html>
