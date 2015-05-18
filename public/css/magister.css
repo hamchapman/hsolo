@@ -1,5 +1,4 @@
 html {
-	background:#505D6E url('/images/body4.jpg') no-repeat center center fixed;
 	min-height:100%;
 	-webkit-background-size: cover;
   -moz-background-size: cover;
@@ -21,18 +20,40 @@ body {
 }
 
 
-/********************************************************/
-/*                    Navigation bar                    */
-/********************************************************/
-#header{
-  border-bottom: 1px solid #3c3c41;
-  top: 0px;
-  right: 0px;
-  bottom: auto;
-  left: 0px;
-  height: 48px;
-  background-color: #1d1d1e;
+
+div#myPublisherDiv{
+
+position: fixed;
+
+top: 50%;
+
+left: 50%;
+
+min-width: 100%;
+
+min-height: 100%;
+
+width: auto;
+
+height: auto;
+
+z-index: -100;
+
+-webkit-transform: translateX(-50%) translateY(-50%);
+
+transform: translateX(-50%) translateY(-50%);
+
+/*background: url(polina.jpg) no-repeat;*/
+
+background-size: cover;
+  filter: gray; /* IE6-9 */
+  filter: grayscale(1); /* Firefox 35+ */
+  -webkit-filter: grayscale(1); /* Google Chrome, Safari 6+ & Opera 15+ */
+
 }
+
+
+
 
 /********************************************************/
 /*             Sections - universal classes             */
@@ -425,4 +446,15 @@ html, body {
 	h1.title {
 		font-size: 48px;
 	}
+}
+
+
+#subscriberDiv{
+	  filter: gray; /* IE6-9 */
+  filter: grayscale(1); /* Firefox 35+ */
+  -webkit-filter: grayscale(1); /* Google Chrome, Safari 6+ & Opera 15+ */
+}
+
+#subscriberDiv.OT_mirrored.OT_root.OT_subscriber.OT_fit-mode-cover{
+	width: 100% !important;
 }
