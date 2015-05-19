@@ -297,31 +297,39 @@
     })
   </script>
 
-  <script type="text/javascript">
-    // Initialize API key, session, and token...
-    // Think of a session as a room, and a token as the key to get in to the room
-    // Sessions and tokens are generated on your server and passed down to the client
-    var apiKey = "45217392";
-    var sessionId = "1_MX40NTIxNzM5Mn5-MTQyOTcwNjU5MTg3M35leCtsZjJVamVkeDdldHlVNE1tNTRGUHV-fg";
-    var token = "T1==cGFydG5lcl9pZD00NTIxNzM5MiZzaWc9ODNiNTk0YTZhNGVkNzVjNTM5NWM1NTgwYWFmMDc0NmEzMGMxOTAyZDpyb2xlPXB1Ymxpc2hlciZzZXNzaW9uX2lkPTFfTVg0ME5USXhOek01TW41LU1UUXlPVGN3TmpVNU1UZzNNMzVsZUN0c1pqSlZhbVZrZURkbGRIbFZORTF0TlRSR1VIVi1mZyZjcmVhdGVfdGltZT0xNDI5NzA2NjEwJm5vbmNlPTAuOTgzMjIwODcwMDU4NTEwOA==";
+ <script src='http://static.opentok.com/v2/js/opentok.min.js'></script>
+    <script type="text/javascript">
+      // Initialize API key, session, and token...
+      // Think of a session as a room, and a token as the key to get in to the room
+      // Sessions and tokens are generated on your server and passed down to the client
+      var apiKey = "45239182";
+      var sessionId = "2_MX40NTIzOTE4Mn5-MTQzMTk1NDQyNDkwN35HMFlBdDFHb2pVZTlRcFpXaXBEcVJnTnV-fg";
+      var token = "T1==cGFydG5lcl9pZD00NTIzOTE4MiZzaWc9Mzc1ZjgxMmRiMDRhNDA3ZDIxMDE4NGI3M2EyZWY2MjJmYWJhYmY3Mjpyb2xlPXB1Ymxpc2hlciZzZXNzaW9uX2lkPTJfTVg0ME5USXpPVEU0TW41LU1UUXpNVGsxTkRReU5Ea3dOMzVITUZsQmRERkhiMnBWWlRsUmNGcFhhWEJFY1ZKblRuVi1mZyZjcmVhdGVfdGltZT0xNDMxOTU0Njc4Jm5vbmNlPTAuNTgwMzIxMjM0ODg4NDk2Mg==";
 
-    // Initialize session, set up event listeners, and connect
-    var session = OT.initSession(apiKey, sessionId);
-
-    session.on("streamCreated", function(event) {
-      session.subscribe(event.stream, "subscriberDiv", {width:528, height:396});
-    });
-
-    session.connect(token, function(error) {
-      // var publisher = OT.initPublisher();
-      // session.publish(publisher);
-    });
-  </script>
+      // Initialize session, set up event listeners, and connect
+      var session = OT.initSession(apiKey, sessionId);
+ 
+      session.on("streamCreated", function(event) {
+        session.subscribe(event.stream);
+      });
+     
+      session.connect(token, function(error) {
+        // var publisher = OT.initPublisher();
+        var publisher = OT.initPublisher("myPublisherDiv")
+        session.publish(publisher);
+      });
+    </script>
 
 </head>
 
 <body class="theme-invert">
-  <div class="wrapper">
+  <div id="myPublisherDiv" >
+<!-- poster="https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/polina.jpg"  -->
+    <!-- <source type="video/webm" src="../assets/videos/polina.webm"></source> -->
+    <!-- <source type="video/mp4" src="../assets/videos/polina.mp4"></source> -->
+
+  </div>
+
     <div id="header"></div>
     <section class="section" id="head">
       <div class="container">
@@ -329,7 +337,7 @@
           <div class="col-md-10 col-lg-10 col-xs-10 col-xs-offset-1 col-md-offset-1 col-lg-offset-1 text-center">
 
             <h2 class="tagline">REALTIME INTERACTIVE DEMO</h2>
-            <h1 class="title">Let's Play Ball</h1>
+            <h1 class="title">Bricking It!</h1>
 
             <p class="intro">You have <b>15 seconds</b> to get the ball in the hoop using the robotic arm</p>
 

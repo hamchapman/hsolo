@@ -20,19 +20,52 @@ body {
 	font-weight: normal;
 }
 
+div#myPublisherDiv{
+
+position: fixed;
+
+top: 50%;
+
+left: 50%;
+
+min-width: 100%;
+
+min-height: 100%;
+
+width: auto;
+
+height: auto;
+
+z-index: -100;
+
+-webkit-transform: translateX(-50%) translateY(-50%);
+
+transform: translateX(-50%) translateY(-50%);
+
+/*background: url(polina.jpg) no-repeat;*/
+
+background-size: cover;
+  filter: gray; /* IE6-9 */
+  filter: grayscale(1); /* Firefox 35+ */
+  -webkit-filter: grayscale(1); /* Google Chrome, Safari 6+ & Opera 15+ */
+
+}
+
+.OT_audio-level-meter__bar {
+    position: absolute;
+    width: 0;
+    height: 0;
+    top: -96%;
+    right: -96%;
+    border-radius: 50%;
+    background-color: transparent;
+    }
+
 
 /********************************************************/
 /*                    Navigation bar                    */
 /********************************************************/
-#header{
-  border-bottom: 1px solid #3c3c41;
-  top: 0px;
-  right: 0px;
-  bottom: auto;
-  left: 0px;
-  height: 48px;
-  background-color: #1d1d1e;
-}
+
 
 /********************************************************/
 /*             Sections - universal classes             */
@@ -43,7 +76,7 @@ body {
 	width: 100%;
 	overflow:auto;
 	height:100%;
-	padding-top:8vh;
+	padding-top:12vh;
 	padding-bottom:50px;
 	display:none;
 	top:0;
@@ -109,7 +142,7 @@ p{
 .subtitle {
 	font-family: 'againtsregular', Helvetica, Arial, sans-serif;
 	font-weight:normal;
-	font-size:120px;
+	font-size:140px;
 	color:#fff;
 	line-height:1em;
 }
@@ -124,7 +157,7 @@ p{
 	font-size:14px;
 	line-height:1.3em;
 	font-weight:600;
-	margin-bottom:40px;
+	margin-bottom:20px;
 	color: #c6c7c7;
 	letter-spacing: 3px;
 }
